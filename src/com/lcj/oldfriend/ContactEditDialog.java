@@ -4,6 +4,7 @@ import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.net.Uri;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
@@ -11,11 +12,13 @@ import android.view.Window;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 /**
  * 联系人添加 / 编辑。
- * 核心是「微信备注名」—— 微信里显示的名字，用来在微信里搜索到这个人。
+ * 头像可以：点头像换颜色 / 从相册选照片（照片拷进应用私有目录）。
+ * 核心字段是「微信备注名」—— 微信里显示的名字，用来在微信里搜索到这个人。
  */
 public class ContactEditDialog extends Dialog {
 
@@ -28,6 +31,7 @@ public class ContactEditDialog extends Dialog {
     private final Contact c;
     private Callback cb;
     private Runnable pickPhone;
+    private Runnable pickPhoto;
 
     private final AvatarView avatar;
     private final EditText name;
@@ -52,48 +56,43 @@ public class ContactEditDialog extends Dialog {
         }
 
         int dp = (int) ctx.getResources().getDisplayMetrics().density;
-        LinearLayout root = U.v(ctx);
-        root.setBackground(U.solid(th.card, dp * 22));
-        root.setPadding(dp * 20, dp * 18, dp * 20, dp * 18);
+        LinearLayout content = U.v(ctx);
+        content.setPadding(dp * 20, dp * 16, dp * 20, dp * 16);
 
         TextView title = U.tv(ctx, origin == null ? "添加联系人" : "编辑联系人", 22, th.text, true);
-        root.addView(title, U.lp(-2, -2, 0));
+        content.addView(title, U.lp(-2, -2, 0));
 
         avatar = new AvatarView(ctx);
         avatar.setContact(c);
         avatar.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                colorIdx = (colorIdx + 1) % Store.PALETTE.length;
-                c.color = Store.PALETTE[colorIdx];
-                avatar.setContact(c);
-            }
+            @Override public void onClick(View v) { showAvatarMenu(); }
         });
         LinearLayout avRow = U.h(ctx);
         avRow.setGravity(Gravity.CENTER);
         avRow.addView(avatar, U.lp(dp * 84, dp * 84, 0));
-        root.addView(avRow, U.lpM(-1, -2, 0, dp * 12, 0));
+        content.addView(avRow, U.lpM(-1, -2, 0, dp * 10, 0));
 
-        TextView colorHint = U.tv(ctx, "点头像换颜色", 13, th.sub, false);
+        TextView colorHint = U.tv(ctx, "点头像：换照片或颜色", 13, th.sub, false);
         colorHint.setGravity(Gravity.CENTER);
-        root.addView(colorHint, U.lp(-1, -2, 0));
+        content.addView(colorHint, U.lp(-1, -2, 0));
 
-        name = input(ctx, "姓名（如：女儿）", false, dp);
+        name = input(ctx, "姓名", false, dp);
         name.setText(c.name);
-        root.addView(name, U.lpM(-1, -2, 0, dp * 14, 0));
+        content.addView(name, U.lpM(-1, -2, 0, dp * 12, 0));
 
-        wxName = input(ctx, "微信备注名（微信里显示的名字）", false, dp);
+        wxName = input(ctx, "微信备注名", false, dp);
         wxName.setText(c.wxName);
-        root.addView(wxName, U.lpM(-1, -2, 0, dp * 10, 0));
+        content.addView(wxName, U.lpM(-1, -2, 0, dp * 10, 0));
 
         TextView wxHint = U.tv(ctx, "填了才能在微信里自动找到 TA；留空就用姓名", 13, th.sub, false);
-        root.addView(wxHint, U.lpM(-1, -2, 0, dp * 4, 0));
+        content.addView(wxHint, U.lpM(-1, -2, 0, dp * 4, 0));
 
         number = input(ctx, "手机号（可不填）", true, dp);
         number.setText(c.number);
-        root.addView(number, U.lpM(-1, -2, 0, dp * 10, 0));
+        content.addView(number, U.lpM(-1, -2, 0, dp * 10, 0));
 
         TextView ctLabel = U.tv(ctx, "点这个人时：", 15, th.sub, true);
-        root.addView(ctLabel, U.lpM(-1, -2, 0, dp * 12, dp * 6));
+        content.addView(ctLabel, U.lpM(-1, -2, 0, dp * 12, dp * 6));
 
         LinearLayout seg = U.h(ctx);
         final TextView segVideo = segBtn(ctx, "视频通话", dp);
@@ -108,7 +107,7 @@ public class ContactEditDialog extends Dialog {
         LinearLayout.LayoutParams slp2 = U.lp(0, -2, 1f);
         slp2.leftMargin = dp * 10;
         seg.addView(segVoice, slp2);
-        root.addView(seg, U.lp(-1, -2, 0));
+        content.addView(seg, U.lp(-1, -2, 0));
         paintSeg(segVideo, segVoice);
 
         TextView fromPhone = U.tv(ctx, "从手机通讯录找", 16, th.accent, true);
@@ -120,7 +119,7 @@ public class ContactEditDialog extends Dialog {
                 if (pickPhone != null) pickPhone.run();
             }
         });
-        root.addView(fromPhone, U.lpM(-1, -2, 0, dp * 14, 0));
+        content.addView(fromPhone, U.lpM(-1, -2, 0, dp * 14, 0));
 
         LinearLayout btns = U.h(ctx);
         Button cancel = btn(ctx, "取消", th.text, U.lighten(th.accent, 0.82f), dp);
@@ -158,20 +157,66 @@ public class ContactEditDialog extends Dialog {
         LinearLayout.LayoutParams slp = U.lp(0, -2, 1f);
         slp.leftMargin = dp * 10;
         btns.addView(save, slp);
-        root.addView(btns, U.lpM(-1, -2, 0, dp * 16, 0));
+        content.addView(btns, U.lpM(-1, -2, 0, dp * 14, 0));
+
+        // 外面套 ScrollView：内容多时可滚，不再超屏
+        ScrollView sc = new ScrollView(ctx);
+        sc.setVerticalScrollBarEnabled(false);
+        sc.addView(content, new android.view.ViewGroup.LayoutParams(-1, -2));
 
         requestWindowFeature(Window.FEATURE_NO_TITLE);
-        setContentView(root, new android.view.ViewGroup.LayoutParams(-2, -2));
+        setContentView(sc, new android.view.ViewGroup.LayoutParams(-1, -2));
         Window w = getWindow();
         if (w != null) {
             w.setBackgroundDrawableResource(android.R.color.transparent);
             android.view.WindowManager.LayoutParams wl = w.getAttributes();
             int screenW = ctx.getResources().getDisplayMetrics().widthPixels;
-            wl.width = Math.min(screenW - dp * 24, dp * 340);
+            int screenH = ctx.getResources().getDisplayMetrics().heightPixels;
+            wl.width = (int) (screenW * 0.92f);   // 尽量宽，输入框不再挤
+            wl.height = (int) (screenH * 0.86f);  // 高度受限，靠内部滚动
             w.setAttributes(wl);
         }
         setCanceledOnTouchOutside(false);
     }
+
+    // ---------- 头像：换照片 / 换颜色 ----------
+
+    private void showAvatarMenu() {
+        java.util.List<String> items = new java.util.ArrayList<String>();
+        items.add("从相册选照片");
+        items.add("换一个颜色");
+        if (c.photo != null && c.photo.length() > 0) items.add("清除照片");
+        new android.app.AlertDialog.Builder(getContext())
+                .setTitle("头像")
+                .setItems(items.toArray(new String[0]), new android.content.DialogInterface.OnClickListener() {
+                    @Override public void onClick(android.content.DialogInterface d, int w) {
+                        if (w == 0) {
+                            if (pickPhoto != null) pickPhoto.run();
+                        } else if (w == 1) {
+                            colorIdx = (colorIdx + 1) % Store.PALETTE.length;
+                            c.color = Store.PALETTE[colorIdx];
+                            avatar.setContact(c);
+                        } else {
+                            c.photo = null;
+                            avatar.setContact(c);
+                        }
+                    }
+                })
+                .create().show();
+    }
+
+    /** 相册选完由宿主 Activity 回调。 */
+    public void onPhotoPicked(Uri uri) {
+        String path = U.copyPhotoToPrivate(getContext(), uri);
+        if (path == null) {
+            toast("照片读取失败");
+            return;
+        }
+        c.photo = path;
+        avatar.setContact(c);
+    }
+
+    // ---------- 控件 ----------
 
     private void paintSeg(TextView video, TextView voice) {
         boolean v = callType == Contact.CALL_VIDEO;
@@ -183,9 +228,10 @@ public class ContactEditDialog extends Dialog {
     }
 
     private TextView segBtn(Context ctx, String s, int dp) {
-        TextView t = U.tv(ctx, s, 16, th.sub, true);
+        TextView t = U.tv(ctx, s, 15, th.sub, true);
         t.setGravity(Gravity.CENTER);
-        t.setPadding(0, dp * 12, 0, dp * 12);
+        t.setSingleLine(true);
+        t.setPadding(dp * 8, dp * 12, dp * 8, dp * 12);
         return t;
     }
 
@@ -219,6 +265,7 @@ public class ContactEditDialog extends Dialog {
 
     public void setCallback(Callback cb) { this.cb = cb; }
     public void setOnPickFromPhone(Runnable r) { this.pickPhone = r; }
+    public void setOnPickPhoto(Runnable r) { this.pickPhoto = r; }
 
     /** 从系统通讯录选完后填回输入框。 */
     public void fill(String n, String num) {

@@ -104,6 +104,47 @@ public final class U {
         return d;
     }
 
+    /**
+     * 把相册选中的图片缩小后存进应用私有目录（免存储权限），返回路径或 null。
+     * 最长边压到 512px、JPEG 88，一张几十 KB，老人机也不卡。
+     */
+    public static String copyPhotoToPrivate(Context c, android.net.Uri uri) {
+        java.io.InputStream in = null;
+        java.io.FileOutputStream out = null;
+        android.graphics.Bitmap bmp = null;
+        android.graphics.Bitmap scaled = null;
+        try {
+            java.io.File dir = new java.io.File(c.getFilesDir(), "photos");
+            dir.mkdirs();
+            java.io.File f = new java.io.File(dir, "p_" + System.currentTimeMillis() + ".jpg");
+
+            in = c.getContentResolver().openInputStream(uri);
+            if (in == null) return null;
+            bmp = android.graphics.BitmapFactory.decodeStream(in);
+            if (bmp == null) return null;
+
+            int w = bmp.getWidth(), h = bmp.getHeight();
+            int max = 512;
+            float scale = Math.min(1f, max / (float) Math.max(w, h));
+            scaled = scale < 1f
+                    ? android.graphics.Bitmap.createScaledBitmap(bmp, Math.max(1, (int) (w * scale)),
+                            Math.max(1, (int) (h * scale)), true)
+                    : bmp;
+
+            out = new java.io.FileOutputStream(f);
+            scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 88, out);
+            out.flush();
+            return f.getAbsolutePath();
+        } catch (Throwable t) {
+            return null;
+        } finally {
+            try { if (in != null) in.close(); } catch (Exception ignored) {}
+            try { if (out != null) out.close(); } catch (Exception ignored) {}
+            try { if (scaled != null && scaled != bmp) scaled.recycle(); } catch (Exception ignored) {}
+            try { if (bmp != null) bmp.recycle(); } catch (Exception ignored) {}
+        }
+    }
+
     /** 按下轻微缩小 + 回弹，解决"点了没反应"的手感问题。 */
     public static void tapFx(final View v) {
         if (v == null) return;

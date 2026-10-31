@@ -13,11 +13,18 @@ public class AvatarView extends View {
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint tp = new Paint(Paint.ANTI_ALIAS_FLAG);
     private Contact contact;
+    private Bitmap cache;       // 解码结果缓存，避免每帧 decodeFile
+    private String cachePath;
 
     public AvatarView(Context c) { super(c); }
 
     public void setContact(Contact c) {
         this.contact = c;
+        String p = (c == null || c.photo == null) ? null : c.photo;
+        if (p == null ? cachePath != null : !p.equals(cachePath)) {
+            cache = null;
+            cachePath = null;
+        }
         setContentDescription(c == null ? "" : c.name);
         invalidate();
     }
@@ -66,6 +73,7 @@ public class AvatarView extends View {
 
     private Bitmap loadPhoto() {
         if (contact == null || contact.photo == null || contact.photo.length() == 0) return null;
+        if (cache != null && contact.photo.equals(cachePath)) return cache;
         try {
             BitmapFactory.Options o = new BitmapFactory.Options();
             o.inJustDecodeBounds = true;
@@ -75,6 +83,10 @@ public class AvatarView extends View {
             o = new BitmapFactory.Options();
             o.inSampleSize = sample;
             Bitmap b = BitmapFactory.decodeFile(contact.photo, o);
+            if (b != null) {
+                cache = b;
+                cachePath = contact.photo;
+            }
             return b;
         } catch (Exception e) { return null; }
     }

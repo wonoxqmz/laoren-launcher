@@ -37,6 +37,7 @@ import java.util.Set;
 public class LauncherActivity extends Activity {
 
     private static final int REQ_PICK_CONTACT = 12;
+    private static final int REQ_PICK_PHOTO = 14;
     private static final int REQ_SETTINGS = 13;
 
     private Theme th;
@@ -466,6 +467,9 @@ public class LauncherActivity extends Activity {
         d.setOnPickFromPhone(new Runnable() {
             @Override public void run() { pickSystemContact(); }
         });
+        d.setOnPickPhoto(new Runnable() {
+            @Override public void run() { launchPhotoPicker(); }
+        });
         d.setCallback(new ContactEditDialog.Callback() {
             @Override public void onSaved(Contact c) {
                 if (index >= 0 && index < contacts.size()) contacts.set(index, c);
@@ -503,7 +507,20 @@ public class LauncherActivity extends Activity {
         super.onActivityResult(req, res, data);
         if (req == REQ_PICK_CONTACT && res == RESULT_OK && data != null && data.getData() != null) {
             readSystemContact(data.getData());
+        } else if (req == REQ_PICK_PHOTO && res == RESULT_OK && data != null && data.getData() != null) {
+            if (lastDialog != null && lastDialog.isShowing()) {
+                lastDialog.onPhotoPicked(data.getData());
+            }
         }
+    }
+
+    private void launchPhotoPicker() {
+        try {
+            Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+            i.setType("image/*");
+            i.addCategory(Intent.CATEGORY_OPENABLE);
+            startActivityForResult(Intent.createChooser(i, "选择照片"), REQ_PICK_PHOTO);
+        } catch (Exception e) { toast("打不开相册"); }
     }
 
     private void readSystemContact(Uri uri) {
@@ -542,6 +559,12 @@ public class LauncherActivity extends Activity {
         Contact c = new Contact(name, name, Store.pickColor(contacts.size()));
         c.number = number;
         final ContactEditDialog d = new ContactEditDialog(this, th, c, contacts.size());
+        d.setOnPickFromPhone(new Runnable() {
+            @Override public void run() { pickSystemContact(); }
+        });
+        d.setOnPickPhoto(new Runnable() {
+            @Override public void run() { launchPhotoPicker(); }
+        });
         d.setCallback(new ContactEditDialog.Callback() {
             @Override public void onSaved(Contact saved) {
                 contacts.add(saved);
@@ -550,6 +573,7 @@ public class LauncherActivity extends Activity {
             }
             @Override public void onDelete() {}
         });
+        lastDialog = d;
         d.show();
     }
 
