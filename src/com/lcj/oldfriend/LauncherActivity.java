@@ -140,8 +140,7 @@ public class LauncherActivity extends Activity {
         FrameLayout.LayoutParams glp = new FrameLayout.LayoutParams(U.dp(this, 36), U.dp(this, 36),
                 Gravity.TOP | Gravity.END);
         timeCard.addView(gear, glp);
-        col.addView(timeCard, U.lp(-1, -2, 0));
-        ((LinearLayout.LayoutParams) timeCard.getLayoutParams()).bottomMargin = U.dp(this, 14);
+        col.addView(timeCard, U.lpM(-1, -2, 0, 0, U.dp(this, 14)));
 
         // 联系人行容器
         contactRows = U.v(this);
@@ -155,8 +154,7 @@ public class LauncherActivity extends Activity {
         LinearLayout col = U.v(this);
         col.setPadding(U.dp(this, 14), U.dp(this, 18), U.dp(this, 14), U.dp(this, 14));
         TextView title = U.tv(this, "全部应用", 26, th.text, true);
-        col.addView(title, U.lp(-2, -2, 0));
-        ((LinearLayout.LayoutParams) title.getLayoutParams()).bottomMargin = U.dp(this, 14);
+        col.addView(title, U.lpM(-2, -2, 0, 0, U.dp(this, 14)));
         appRows = U.v(this);
         col.addView(appRows, U.lp(-1, -2, 0));
         sc.addView(col, new ViewGroup.LayoutParams(-1, -2));
@@ -212,8 +210,7 @@ public class LauncherActivity extends Activity {
 
         TextView t = U.tv(this, label, 15, active ? th.accent : th.sub, true);
         t.setGravity(Gravity.CENTER);
-        ((LinearLayout.LayoutParams) t.getLayoutParams()).topMargin = U.dp(this, 4);
-        it.addView(t, U.lp(-2, -2, 0));
+        it.addView(t, U.lpM(-2, -2, 0, U.dp(this, 4), 0));
 
         bar.addView(it, U.lp(0, -1, 1f));
     }
@@ -251,8 +248,7 @@ public class LauncherActivity extends Activity {
             TextView t2 = U.tv(this, "点下方「添加」按钮\n把家人电话放上桌面", 18, th.sub, false);
             t2.setGravity(Gravity.CENTER);
             empty.addView(t1, U.lp(-2, -2, 0));
-            ((LinearLayout.LayoutParams) t2.getLayoutParams()).topMargin = U.dp(this, 12);
-            empty.addView(t2, U.lp(-2, -2, 0));
+            empty.addView(t2, U.lpM(-2, -2, 0, U.dp(this, 12), 0));
             empty.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) { editContact(null, -1); }
             });
@@ -272,8 +268,7 @@ public class LauncherActivity extends Activity {
                     row.addView(filler, U.lp(0, U.dp(this, 150), 1f));
                 }
             }
-            contactRows.addView(row, U.lp(-1, -2, 0));
-            ((LinearLayout.LayoutParams) row.getLayoutParams()).topMargin = U.dp(this, 10);
+            contactRows.addView(row, U.lpM(-1, -2, 0, U.dp(this, 10), 0));
             idx++;
         }
     }
@@ -294,8 +289,7 @@ public class LauncherActivity extends Activity {
         TextView name = U.tv(this, ct.name, Prefs.nameSp(this), th.text, true);
         name.setGravity(Gravity.CENTER);
         name.setSingleLine(true);
-        ((LinearLayout.LayoutParams) name.getLayoutParams()).topMargin = U.dp(this, 8);
-        card.addView(name, U.lp(-1, -2, 0));
+        card.addView(name, U.lpM(-1, -2, 0, U.dp(this, 8), 0));
 
         card.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
@@ -336,8 +330,7 @@ public class LauncherActivity extends Activity {
                     row.addView(new View(this), U.lp(0, -2, 1f));
                 }
             }
-            appRows.addView(row, U.lp(-1, -2, 0));
-            ((LinearLayout.LayoutParams) row.getLayoutParams()).topMargin = U.dp(this, 16);
+            appRows.addView(row, U.lpM(-1, -2, 0, U.dp(this, 16), 0));
         }
     }
 
@@ -356,8 +349,7 @@ public class LauncherActivity extends Activity {
         TextView name = U.tv(this, app.label, Prefs.appSp(this), th.text, false);
         name.setGravity(Gravity.CENTER);
         name.setSingleLine(true);
-        ((LinearLayout.LayoutParams) name.getLayoutParams()).topMargin = U.dp(this, 6);
-        it.addView(name, U.lp(-1, -2, 0));
+        it.addView(name, U.lpM(-1, -2, 0, U.dp(this, 6), 0));
 
         it.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {

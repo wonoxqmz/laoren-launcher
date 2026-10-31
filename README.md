@@ -72,6 +72,14 @@ bash build.sh   # aapt2 → javac → d8 → zipalign → apksigner，约 30 秒
 
 ## 更新日志
 
+### v1.0.1（2026-10-31）
+
+- **修复启动闪退**：`U.tv()` 创建的控件尚未加入父容器时 `getLayoutParams()` 返回 null，
+  直接强转设置边距导致 NullPointerException，主界面构建即崩溃。
+  新增 `U.lpM()`（带边距的 LayoutParams），全部改为在 `addView` 时传入边距。
+- 新增崩溃日志兜底：未捕获异常写入 `files/crash.txt`，便于反馈问题。
+- 设置页「点按播报名字」说明文字不再报错。
+
 ### v1.0.0（2026-10-31）
 
 - 首个版本：主桌面、联系人一键拨号、适老拨号盘、应用页、

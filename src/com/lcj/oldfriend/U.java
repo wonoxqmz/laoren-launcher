@@ -54,6 +54,14 @@ public final class U {
         return p;
     }
 
+    /** 带外边距的 LayoutParams —— 直接用于 addView，避免对未加入父容器的 View 取 getLayoutParams()（会 null）。 */
+    public static LinearLayout.LayoutParams lpM(int w, int h, float weight, int top, int bottom) {
+        LinearLayout.LayoutParams p = lp(w, h, weight);
+        p.topMargin = top;
+        p.bottomMargin = bottom;
+        return p;
+    }
+
     public static LinearLayout v(Context c) {
         LinearLayout l = new LinearLayout(c);
         l.setOrientation(LinearLayout.VERTICAL);

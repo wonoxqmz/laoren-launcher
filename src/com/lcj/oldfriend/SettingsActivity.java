@@ -185,7 +185,6 @@ public class SettingsActivity extends Activity {
 
         LinearLayout rTts = row("点按播报名字");
         TextView hintTts = U.tv(this, "点击应用或联系人时语音提醒", 14, th.sub, false);
-        ((LinearLayout.LayoutParams) hintTts.getLayoutParams()).topMargin = dp(-6);
         hintTts.setPadding(0, 0, 0, dp(10));
         Switch swTts = makeSwitch(Prefs.ttsClick(this));
         swTts.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
