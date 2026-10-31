@@ -10,6 +10,8 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.ContactsContract;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -55,6 +57,7 @@ public class LauncherActivity extends Activity {
         Tts.init(this);
         buildUi();
         refresh();
+        maybeCheckUpdate();
     }
 
     @Override protected void onResume() {
@@ -548,6 +551,50 @@ public class LauncherActivity extends Activity {
             @Override public void onDelete() {}
         });
         d.show();
+    }
+
+    // ================= 自动检查更新 =================
+
+    private boolean updateChecked = false;
+
+    /** 桌面打开后延迟几秒静默检查，12 小时最多一次，不打扰使用。 */
+    private void maybeCheckUpdate() {
+        if (updateChecked) return;
+        if (!Prefs.autoUpdate(this)) return;
+        long last = Prefs.lastCheck(this);
+        if (System.currentTimeMillis() - last < 12L * 3600L * 1000L) return;
+        updateChecked = true;
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+            @Override public void run() {
+                UpdateChecker.check(LauncherActivity.this, new UpdateChecker.Callback() {
+                    @Override public void onResult(UpdateChecker.Info info) {
+                        Prefs.lastCheck(LauncherActivity.this, System.currentTimeMillis());
+                        if (info != null && !isFinishing()) showUpdate(info);
+                    }
+
+                    @Override public void onError() {
+                        // 没网/接口挂了：静默，别打扰老人
+                    }
+
+                });
+            }
+        }, 2500);
+    }
+
+    private void showUpdate(final UpdateChecker.Info info) {
+        String notes = info.notes == null ? "" : info.notes.trim();
+        if (notes.length() > 320) notes = notes.substring(0, 320) + "…";
+        if (notes.length() == 0) notes = "有新版本可以更新，更新后功能更稳。";
+        new AlertDialog.Builder(this)
+                .setTitle("发现新版本 " + info.version)
+                .setMessage(notes)
+                .setPositiveButton("去下载", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface d, int w) {
+                        UpdateChecker.openDownload(LauncherActivity.this, info);
+                    }
+                })
+                .setNegativeButton("以后再说", null)
+                .create().show();
     }
 
     private void toast(String s) { Toast.makeText(this, s, Toast.LENGTH_SHORT).show(); }

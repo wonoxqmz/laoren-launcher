@@ -231,6 +231,43 @@ public class SettingsActivity extends Activity {
         section("系 统");
         LinearLayout c4 = card();
 
+        LinearLayout rAuto = row("自动检查更新");
+        Switch swAuto = syncSwitch(Prefs.autoUpdate(this));
+        swAuto.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
+            @Override public void onCheckedChanged(android.widget.CompoundButton b, boolean v) {
+                Prefs.autoUpdate(SettingsActivity.this, v);
+            }
+        });
+        rAuto.addView(swAuto, U.lp(-2, -2, 0));
+        c4.addView(rAuto);
+        divider(c4);
+
+        final LinearLayout rCheck = row("检查更新");
+        final TextView vCheck = valueText(rCheck, "当前 v" + UpdateChecker.currentVersion(this));
+        rCheck.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                vCheck.setText("检查中…");
+                UpdateChecker.check(SettingsActivity.this, new UpdateChecker.Callback() {
+                    @Override public void onResult(UpdateChecker.Info info) {
+                        Prefs.lastCheck(SettingsActivity.this, System.currentTimeMillis());
+                        if (info == null) {
+                            vCheck.setText("v" + UpdateChecker.currentVersion(SettingsActivity.this) + " · 最新");
+                            Toast.makeText(SettingsActivity.this, "已经是最新版本", Toast.LENGTH_SHORT).show();
+                        } else {
+                            vCheck.setText("发现 v" + info.version);
+                            showUpdateDialog(info);
+                        }
+                    }
+
+                    @Override public void onError() {
+                        vCheck.setText("检查失败，请检查网络");
+                    }
+                });
+            }
+        });
+        c4.addView(rCheck);
+        divider(c4);
+
         LinearLayout rHome = row("设为默认桌面");
         valueText(rHome, "去设置 ＞");
         rHome.setOnClickListener(new View.OnClickListener() {
@@ -254,6 +291,23 @@ public class SettingsActivity extends Activity {
         });
         c4.addView(rAbout);
     }
+
+    private void showUpdateDialog(final UpdateChecker.Info info) {
+        String notes = info.notes == null ? "" : info.notes.trim();
+        if (notes.length() > 400) notes = notes.substring(0, 400) + "…";
+        if (notes.length() == 0) notes = "有新版本可以更新。";
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("发现新版本 " + info.version)
+                .setMessage(notes)
+                .setPositiveButton("去下载", new android.content.DialogInterface.OnClickListener() {
+                    @Override public void onClick(android.content.DialogInterface d, int w) {
+                        UpdateChecker.openDownload(SettingsActivity.this, info);
+                    }
+                })
+                .setNegativeButton("以后再说", null)
+                .create().show();
+    }
+
 
     private Switch syncSwitch(boolean checked) {
         Switch s = new Switch(this);

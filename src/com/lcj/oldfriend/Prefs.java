@@ -22,6 +22,8 @@ public class Prefs {
     private static final String K_TTS_HOUR  = "tts_hour";  // 整点报时
     private static final String K_SHOW_APPS = "show_apps"; // 底栏显示应用页
     private static final String K_CALL_CONFIRM = "call_confirm"; // 拨号前确认
+    private static final String K_AUTO_UPDATE = "auto_update";   // 自动检查更新
+    private static final String K_LAST_CHECK = "last_check";     // 上次检查更新时间
 
     public static int font(Context c)        { return sp(c).getInt(K_FONT, 1); }
     public static void font(Context c, int v){ sp(c).edit().putInt(K_FONT, v).apply(); }
@@ -49,6 +51,12 @@ public class Prefs {
 
     public static boolean callConfirm(Context c)         { return sp(c).getBoolean(K_CALL_CONFIRM, false); }
     public static void callConfirm(Context c, boolean v) { sp(c).edit().putBoolean(K_CALL_CONFIRM, v).apply(); }
+
+    public static boolean autoUpdate(Context c)         { return sp(c).getBoolean(K_AUTO_UPDATE, true); }
+    public static void autoUpdate(Context c, boolean v) { sp(c).edit().putBoolean(K_AUTO_UPDATE, v).apply(); }
+
+    public static long lastCheck(Context c)         { return sp(c).getLong(K_LAST_CHECK, 0); }
+    public static void lastCheck(Context c, long v) { sp(c).edit().putLong(K_LAST_CHECK, v).apply(); }
 
     /** 联系人名字字号（跟随字号档）。标准档 24sp，对应原版。 */
     public static float nameSp(Context c) {
