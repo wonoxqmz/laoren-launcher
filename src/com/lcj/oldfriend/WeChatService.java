@@ -228,33 +228,35 @@ public class WeChatService extends AccessibilityService {
         return n.performAction(AccessibilityNodeInfo.ACTION_CLICK);
     }
 
-    /** 聚焦 → 写入 → 验证；SET_TEXT 失败再用剪贴板粘贴。必须确认文本真的进去了。 */
+    /** 聚焦 → 直接写入。SET_TEXT 是无痕写入，不动你的剪贴板。
+     *  只有系统连 SET_TEXT 都不支持时才走剪贴板，且用完立刻恢复原内容。 */
     private boolean setTextAndVerify(AccessibilityNodeInfo edit, String text) {
         if (text == null) return false;
         try { edit.performAction(AccessibilityNodeInfo.ACTION_FOCUS); } catch (Exception ignored) {}
 
-        // 1) ACTION_SET_TEXT（API 21+）
+        // 1) ACTION_SET_TEXT：首选，无痕
         if (Build.VERSION.SDK_INT >= 21) {
             try {
                 android.os.Bundle b = new android.os.Bundle();
                 b.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text);
-                if (edit.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, b)) {
-                    CharSequence t = edit.getText();
-                    if (t != null && t.toString().equals(text)) return true;
-                }
+                if (edit.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, b)) return true;
             } catch (Exception ignored) {}
         }
 
-        // 2) 剪贴板 + 粘贴（部分输入框不认 SET_TEXT）
+        // 2) 兜底：剪贴板粘贴，但用完把剪贴板恢复成原来的内容
         if (Build.VERSION.SDK_INT >= 21) {
             try {
                 android.content.ClipboardManager cm = (android.content.ClipboardManager)
                         getSystemService(Context.CLIPBOARD_SERVICE);
+                android.content.ClipData saved = null;
+                try { saved = cm.getPrimaryClip(); } catch (Exception ignored) {}
                 cm.setPrimaryClip(android.content.ClipData.newPlainText("of", text));
-                if (edit.performAction(AccessibilityNodeInfo.ACTION_PASTE)) {
-                    CharSequence t = edit.getText();
-                    if (t != null && t.toString().contains(text)) return true;
-                }
+                boolean ok = edit.performAction(AccessibilityNodeInfo.ACTION_PASTE);
+                try {
+                    if (saved != null) cm.setPrimaryClip(saved);
+                    else cm.setPrimaryClip(android.content.ClipData.newPlainText("", ""));
+                } catch (Exception ignored) {}
+                if (ok) return true;
             } catch (Exception ignored) {}
         }
         return false;
