@@ -38,6 +38,9 @@ public class WeChatService extends AccessibilityService {
     private static int step = STEP_IDLE;
     private static long deadline = 0;
 
+    private static int inputTries = 0;
+    private static int wxPullTries = 0;
+
     private final Handler h = new Handler(Looper.getMainLooper());
     private final Runnable ticker = new Runnable() {
         @Override public void run() {
@@ -85,7 +88,9 @@ public class WeChatService extends AccessibilityService {
         target = ct.searchName();
         video = ct.callType == Contact.CALL_VIDEO;
         step = STEP_WAIT_HOME;
-        deadline = System.currentTimeMillis() + 20000;
+        inputTries = 0;
+        wxPullTries = 0;
+        deadline = System.currentTimeMillis() + 25000;
         if (inst != null) {
             inst.h.removeCallbacks(inst.ticker);
             inst.h.post(inst.ticker);
@@ -115,6 +120,20 @@ public class WeChatService extends AccessibilityService {
         try { root = getRootInActiveWindow(); } catch (Exception ignored) {}
         if (root == null) return;
 
+        // 关键：只在微信自己的窗口里操作。
+        // 否则可能点到系统全局搜索/别的 App，把名字输到不知什么地方。
+        CharSequence pkg = root.getPackageName();
+        if (pkg == null || !"com.tencent.mm".contentEquals(pkg)) {
+            if (step == STEP_WAIT_HOME) {
+                // 微信还没到前台：每 ~5 秒重新拉一次
+                wxPullTries++;
+                if (wxPullTries % 12 == 0) {
+                    WxCaller.openWeChat(getApplicationContext());
+                }
+            }
+            return;
+        }
+
         switch (step) {
             case STEP_WAIT_HOME: {
                 // 微信首页：找搜索入口
@@ -135,9 +154,15 @@ public class WeChatService extends AccessibilityService {
             }
             case STEP_INPUT: {
                 AccessibilityNodeInfo edit = findEdit(root);
-                if (edit != null) {
-                    if (setText(edit, target)) step = STEP_PICK;
-                    else step = STEP_PICK; // 设置失败也让用户/系统自己搜，尝试直接找结果
+                if (edit == null) break;
+                if (setTextAndVerify(edit, target)) {
+                    inputTries = 0;
+                    step = STEP_PICK;
+                } else {
+                    inputTries++;
+                    if (inputTries >= 8) {
+                        fail("微信搜索框输入不了名字，请手动拨打");
+                    }
                 }
                 break;
             }
@@ -203,15 +228,35 @@ public class WeChatService extends AccessibilityService {
         return n.performAction(AccessibilityNodeInfo.ACTION_CLICK);
     }
 
-    private boolean setText(AccessibilityNodeInfo edit, String text) {
+    /** 聚焦 → 写入 → 验证；SET_TEXT 失败再用剪贴板粘贴。必须确认文本真的进去了。 */
+    private boolean setTextAndVerify(AccessibilityNodeInfo edit, String text) {
         if (text == null) return false;
-        try {
-            if (Build.VERSION.SDK_INT >= 21) {
+        try { edit.performAction(AccessibilityNodeInfo.ACTION_FOCUS); } catch (Exception ignored) {}
+
+        // 1) ACTION_SET_TEXT（API 21+）
+        if (Build.VERSION.SDK_INT >= 21) {
+            try {
                 android.os.Bundle b = new android.os.Bundle();
                 b.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text);
-                return edit.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, b);
-            }
-        } catch (Exception ignored) {}
+                if (edit.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, b)) {
+                    CharSequence t = edit.getText();
+                    if (t != null && t.toString().equals(text)) return true;
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // 2) 剪贴板 + 粘贴（部分输入框不认 SET_TEXT）
+        if (Build.VERSION.SDK_INT >= 21) {
+            try {
+                android.content.ClipboardManager cm = (android.content.ClipboardManager)
+                        getSystemService(Context.CLIPBOARD_SERVICE);
+                cm.setPrimaryClip(android.content.ClipData.newPlainText("of", text));
+                if (edit.performAction(AccessibilityNodeInfo.ACTION_PASTE)) {
+                    CharSequence t = edit.getText();
+                    if (t != null && t.toString().contains(text)) return true;
+                }
+            } catch (Exception ignored) {}
+        }
         return false;
     }
 
@@ -249,7 +294,8 @@ public class WeChatService extends AccessibilityService {
 
     private AccessibilityNodeInfo findEdit(AccessibilityNodeInfo root) {
         for (AccessibilityNodeInfo n : all(root)) {
-            if ("android.widget.EditText".equals(n.getClassName())) return n;
+            CharSequence cn = n.getClassName();
+            if (cn != null && cn.toString().contains("EditText")) return n;
             if (n.isEditable()) return n;
         }
         return null;
