@@ -4,3 +4,4 @@ keystore/
 *.jks
 gen/
 local.properties
+*.idsig
