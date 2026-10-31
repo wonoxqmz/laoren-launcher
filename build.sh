@@ -26,8 +26,8 @@ OUT="build"
 KS="keystore/oldfriend.jks"
 KSPASS="oldfriend2026"
 ALIAS="oldfriend"
-VERCODE=2
-VERNAME=1.0.1
+VERCODE=3
+VERNAME=2.0.0
 
 echo "==> 0/7 clean"
 rm -rf "$OUT"

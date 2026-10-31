@@ -14,8 +14,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 /**
- * 联系人添加 / 编辑对话框（全代码构建，大输入框适老）。
- * 点头像循环换颜色。
+ * 联系人添加 / 编辑。
+ * 核心是「微信备注名」—— 微信里显示的名字，用来在微信里搜索到这个人。
  */
 public class ContactEditDialog extends Dialog {
 
@@ -26,42 +26,40 @@ public class ContactEditDialog extends Dialog {
 
     private final Theme th;
     private final Contact c;
-    private final int colorSeed;
     private Callback cb;
     private Runnable pickPhone;
 
     private final AvatarView avatar;
     private final EditText name;
+    private final EditText wxName;
     private final EditText number;
-    private final TextView deleteBtn;
     private int colorIdx;
+    private int callType;
 
     public ContactEditDialog(Context ctx, Theme th, Contact origin, int colorSeed) {
         super(ctx);
         this.th = th;
-        this.colorSeed = colorSeed;
         this.c = origin == null ? new Contact() : origin;
         if (origin == null) {
             this.colorIdx = colorSeed;
             this.c.color = Store.pickColor(colorSeed);
+            this.callType = Contact.CALL_VIDEO;
         } else {
-            this.colorIdx = -1;
+            this.colorIdx = 0;
             for (int i = 0; i < Store.PALETTE.length; i++)
                 if (Store.PALETTE[i] == origin.color) { this.colorIdx = i; break; }
-            if (this.colorIdx < 0) this.colorIdx = colorSeed;
+            this.callType = origin.callType;
         }
 
-        int dp = (int) getContext().getResources().getDisplayMetrics().density;
-        LinearLayout root = U.v(getContext());
-        root.setBackground(U.solid(th.card, dp * 24));
-        int pad = dp * 22;
-        root.setPadding(pad, pad, pad, pad);
+        int dp = (int) ctx.getResources().getDisplayMetrics().density;
+        LinearLayout root = U.v(ctx);
+        root.setBackground(U.solid(th.card, dp * 22));
+        root.setPadding(dp * 20, dp * 18, dp * 20, dp * 18);
 
-        TextView title = U.tv(getContext(), origin == null ? "添加联系人" : "编辑联系人", 24, th.text, true);
+        TextView title = U.tv(ctx, origin == null ? "添加联系人" : "编辑联系人", 22, th.text, true);
         root.addView(title, U.lp(-2, -2, 0));
 
-        // 头像预览（点击换色）
-        avatar = new AvatarView(getContext());
+        avatar = new AvatarView(ctx);
         avatar.setContact(c);
         avatar.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
@@ -70,84 +68,97 @@ public class ContactEditDialog extends Dialog {
                 avatar.setContact(c);
             }
         });
-        LinearLayout avRow = U.h(getContext());
+        LinearLayout avRow = U.h(ctx);
         avRow.setGravity(Gravity.CENTER);
-        avRow.addView(avatar, U.lp(dp * 96, dp * 96, 0));
-        LinearLayout.LayoutParams avRowLp = U.lp(-1, -2, 0);
-        avRowLp.topMargin = dp * 16;
-        root.addView(avRow, avRowLp);
+        avRow.addView(avatar, U.lp(dp * 84, dp * 84, 0));
+        root.addView(avRow, U.lpM(-1, -2, 0, dp * 12, 0));
 
-        TextView colorHint = U.tv(getContext(), "点头像换颜色", 14, th.sub, false);
+        TextView colorHint = U.tv(ctx, "点头像换颜色", 13, th.sub, false);
         colorHint.setGravity(Gravity.CENTER);
         root.addView(colorHint, U.lp(-1, -2, 0));
 
-        // 姓名
-        name = makeInput("姓名", false);
+        name = input(ctx, "姓名（如：女儿）", false, dp);
         name.setText(c.name);
-        root.addView(name, inputLp(dp));
+        root.addView(name, U.lpM(-1, -2, 0, dp * 14, 0));
 
-        // 号码
-        number = makeInput("电话号码", true);
+        wxName = input(ctx, "微信备注名（微信里显示的名字）", false, dp);
+        wxName.setText(c.wxName);
+        root.addView(wxName, U.lpM(-1, -2, 0, dp * 10, 0));
+
+        TextView wxHint = U.tv(ctx, "填了才能在微信里自动找到 TA；留空就用姓名", 13, th.sub, false);
+        root.addView(wxHint, U.lpM(-1, -2, 0, dp * 4, 0));
+
+        number = input(ctx, "手机号（可不填）", true, dp);
         number.setText(c.number);
-        root.addView(number, inputLp(dp));
+        root.addView(number, U.lpM(-1, -2, 0, dp * 10, 0));
 
-        // 从通讯录导入
-        TextView fromPhone = U.tv(getContext(), "从手机通讯录选择", 18, th.accent, true);
+        TextView ctLabel = U.tv(ctx, "点这个人时：", 15, th.sub, true);
+        root.addView(ctLabel, U.lpM(-1, -2, 0, dp * 12, dp * 6));
+
+        LinearLayout seg = U.h(ctx);
+        final TextView segVideo = segBtn(ctx, "视频通话", dp);
+        final TextView segVoice = segBtn(ctx, "语音通话", dp);
+        segVideo.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { callType = Contact.CALL_VIDEO; paintSeg(segVideo, segVoice); }
+        });
+        segVoice.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { callType = Contact.CALL_VOICE; paintSeg(segVideo, segVoice); }
+        });
+        seg.addView(segVideo, U.lp(0, -2, 1f));
+        LinearLayout.LayoutParams slp2 = U.lp(0, -2, 1f);
+        slp2.leftMargin = dp * 10;
+        seg.addView(segVoice, slp2);
+        root.addView(seg, U.lp(-1, -2, 0));
+        paintSeg(segVideo, segVoice);
+
+        TextView fromPhone = U.tv(ctx, "从手机通讯录找", 16, th.accent, true);
         fromPhone.setGravity(Gravity.CENTER);
-        fromPhone.setBackground(U.solid(U.lighten(th.accent, 0.85f), dp * 12));
-        fromPhone.setPadding(0, dp * 12, 0, dp * 12);
+        fromPhone.setBackground(U.solid(U.lighten(th.accent, 0.87f), dp * 12));
+        fromPhone.setPadding(0, dp * 11, 0, dp * 11);
         fromPhone.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 if (pickPhone != null) pickPhone.run();
             }
         });
-        LinearLayout.LayoutParams fpLp = U.lp(-1, -2, 0);
-        fpLp.topMargin = dp * 16;
-        root.addView(fromPhone, fpLp);
+        root.addView(fromPhone, U.lpM(-1, -2, 0, dp * 14, 0));
 
-        // 按钮
-        LinearLayout btns = U.h(getContext());
-        int btnPad = dp * 14;
-        Button cancel = bigBtn("取消");
+        LinearLayout btns = U.h(ctx);
+        Button cancel = btn(ctx, "取消", th.text, U.lighten(th.accent, 0.82f), dp);
         cancel.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { dismiss(); }
         });
         btns.addView(cancel, U.lp(0, -2, 1f));
 
         if (origin != null) {
-            deleteBtn = bigBtn("删除");
-            deleteBtn.setTextColor(0xFFE5484D);
-            deleteBtn.setOnClickListener(new View.OnClickListener() {
+            Button del = btn(ctx, "删除", 0xFFE5484D, U.lighten(th.accent, 0.82f), dp);
+            del.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) {
                     if (cb != null) cb.onDelete();
                     dismiss();
                 }
             });
-            btns.addView(deleteBtn, U.lp(0, -2, 1f));
-        } else {
-            deleteBtn = null;
+            LinearLayout.LayoutParams lp = U.lp(0, -2, 1f);
+            lp.leftMargin = dp * 10;
+            btns.addView(del, lp);
         }
 
-        Button save = bigBtn("保 存");
-        save.setTextColor(Color.WHITE);
-        save.setBackground(U.solid(th.accent, dp * 12));
+        Button save = btn(ctx, "保 存", Color.WHITE, th.accent, dp);
         save.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 String n = name.getText().toString().trim();
-                String num = number.getText().toString().trim();
                 if (n.length() == 0) { toast("请填写姓名"); return; }
-                if (num.length() == 0) { toast("请填写电话号码"); return; }
                 c.name = n;
-                c.number = num;
+                c.wxName = wxName.getText().toString().trim();
+                c.number = number.getText().toString().trim();
+                c.callType = callType;
                 if (cb != null) cb.onSaved(c);
                 dismiss();
             }
         });
-        btns.addView(save, U.lp(0, -2, 1f));
-
-        LinearLayout.LayoutParams btnsLp = U.lp(-1, -2, 0);
-        btnsLp.topMargin = dp * 20;
-        root.addView(btns, btnsLp);
+        LinearLayout.LayoutParams slp = U.lp(0, -2, 1f);
+        slp.leftMargin = dp * 10;
+        btns.addView(save, slp);
+        root.addView(btns, U.lpM(-1, -2, 0, dp * 16, 0));
 
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(root, new android.view.ViewGroup.LayoutParams(-2, -2));
@@ -155,52 +166,51 @@ public class ContactEditDialog extends Dialog {
         if (w != null) {
             w.setBackgroundDrawableResource(android.R.color.transparent);
             android.view.WindowManager.LayoutParams wl = w.getAttributes();
-            int screenW = getContext().getResources().getDisplayMetrics().widthPixels;
-            wl.width = Math.min(screenW - dpv(24), dpv(340)); // 小屏不溢出
+            int screenW = ctx.getResources().getDisplayMetrics().widthPixels;
+            wl.width = Math.min(screenW - dp * 24, dp * 340);
             w.setAttributes(wl);
         }
         setCanceledOnTouchOutside(false);
     }
 
-    private LinearLayout.LayoutParams inputLp(int dp) {
-        LinearLayout.LayoutParams p = U.lp(-1, -2, 0);
-        p.topMargin = dp * 14;
-        return p;
+    private void paintSeg(TextView video, TextView voice) {
+        boolean v = callType == Contact.CALL_VIDEO;
+        int dp = (int) getContext().getResources().getDisplayMetrics().density;
+        video.setBackground(U.solid(v ? th.accent : U.lighten(th.accent, 0.88f), dp * 12));
+        video.setTextColor(v ? Color.WHITE : th.sub);
+        voice.setBackground(U.solid(!v ? th.accent : U.lighten(th.accent, 0.88f), dp * 12));
+        voice.setTextColor(!v ? Color.WHITE : th.sub);
     }
 
-    private EditText makeInput(String hint, boolean numeric) {
-        EditText e = new EditText(getContext());
+    private TextView segBtn(Context ctx, String s, int dp) {
+        TextView t = U.tv(ctx, s, 16, th.sub, true);
+        t.setGravity(Gravity.CENTER);
+        t.setPadding(0, dp * 12, 0, dp * 12);
+        return t;
+    }
+
+    private EditText input(Context ctx, String hint, boolean numeric, int dp) {
+        EditText e = new EditText(ctx);
         e.setHint(hint);
-        e.setTextSize(22);
+        e.setTextSize(19);
         e.setTextColor(th.text);
         e.setHintTextColor(th.sub);
         e.setSingleLine(true);
         if (numeric) e.setInputType(InputType.TYPE_CLASS_PHONE);
-        int dp = (int) getContext().getResources().getDisplayMetrics().density;
-        e.setBackground(U.stroke(th.dark ? U.darken(th.card, 0.3f) : U.lighten(th.accent, 0.8f),
-                dp * 12, dp * 2, U.lighten(th.accent, 0.5f)));
-        e.setPadding(dp * 14, dp * 12, dp * 14, dp * 12);
+        e.setBackground(U.stroke(U.lighten(th.accent, 0.78f), dp * 12, dp * 2, U.lighten(th.accent, 0.5f)));
+        e.setPadding(dp * 14, dp * 11, dp * 14, dp * 11);
         return e;
     }
 
-    private Button bigBtn(String s) {
-        Button b = new Button(getContext(), null, 0);
+    private Button btn(Context ctx, String s, int textColor, int bg, int dp) {
+        Button b = new Button(ctx, null, 0);
         b.setText(s);
-        b.setTextSize(18);
+        b.setTextSize(17);
         b.setTypeface(Typeface.DEFAULT_BOLD);
-        b.setTextColor(th.text);
-        int dp = (int) getContext().getResources().getDisplayMetrics().density;
-        b.setBackground(U.solid(th.dark ? U.darken(th.card, 0.3f) : U.lighten(th.accent, 0.8f), dp * 12));
-        b.setPadding(0, btnPad(), 0, btnPad());
+        b.setTextColor(textColor);
+        b.setBackground(U.solid(bg, dp * 12));
+        b.setPadding(0, dp * 11, 0, dp * 11);
         return b;
-    }
-
-    private int btnPad() {
-        return dpv(12);
-    }
-
-    private int dpv(int v) {
-        return (int) getContext().getResources().getDisplayMetrics().density * v;
     }
 
     private void toast(String s) {
@@ -210,9 +220,12 @@ public class ContactEditDialog extends Dialog {
     public void setCallback(Callback cb) { this.cb = cb; }
     public void setOnPickFromPhone(Runnable r) { this.pickPhone = r; }
 
-    /** 从系统通讯录选完后，把结果填回当前输入框。 */
+    /** 从系统通讯录选完后填回输入框。 */
     public void fill(String n, String num) {
-        if (n != null) name.setText(n);
+        if (n != null) {
+            name.setText(n);
+            if (wxName.getText().toString().trim().length() == 0) wxName.setText(n);
+        }
         if (num != null && num.length() > 0) number.setText(num);
     }
 }

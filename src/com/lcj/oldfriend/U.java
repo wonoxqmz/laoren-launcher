@@ -95,4 +95,29 @@ public final class U {
         if (name == null || name.length() == 0) return "?";
         return name.substring(0, 1).toUpperCase();
     }
+
+    /** 可点击控件的背景：平时一个颜色，按下变深，手感明确（老人机很吃这个）。 */
+    public static android.graphics.drawable.StateListDrawable clickBg(int normal, int pressed, int radiusPx) {
+        android.graphics.drawable.StateListDrawable d = new android.graphics.drawable.StateListDrawable();
+        d.addState(new int[]{android.R.attr.state_pressed}, solid(pressed, radiusPx));
+        d.addState(new int[]{}, solid(normal, radiusPx));
+        return d;
+    }
+
+    /** 按下轻微缩小 + 回弹，解决"点了没反应"的手感问题。 */
+    public static void tapFx(final View v) {
+        if (v == null) return;
+        v.setOnTouchListener(new View.OnTouchListener() {
+            @Override public boolean onTouch(View view, android.view.MotionEvent e) {
+                int a = e.getActionMasked();
+                if (a == android.view.MotionEvent.ACTION_DOWN) {
+                    view.animate().scaleX(0.96f).scaleY(0.96f).setDuration(70).start();
+                } else if (a == android.view.MotionEvent.ACTION_UP
+                        || a == android.view.MotionEvent.ACTION_CANCEL) {
+                    view.animate().scaleX(1f).scaleY(1f).setDuration(130).start();
+                }
+                return false;
+            }
+        });
+    }
 }

@@ -8,7 +8,7 @@ import android.view.View;
 
 /** 自绘矢量图标：联系人 / 应用 / 电话 / 设置，粗线条高辨识，适老。 */
 public class IconView extends View {
-    public static final int CONTACTS = 0, APPS = 1, PHONE = 2, SETTINGS = 3, SOS = 4;
+    public static final int CONTACTS = 0, APPS = 1, PHONE = 2, SETTINGS = 3, SOS = 4, WECHAT = 5;
 
     private final int type;
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -61,6 +61,16 @@ public class IconView extends View {
                 float y2 = 24 * s + (float) Math.sin(a) * 17 * s;
                 cv.drawLine(x1, y1, x2, y2, p);
             }
+        } else if (type == WECHAT) {
+            // 两个对话气泡
+            p.setStyle(Paint.Style.STROKE);
+            cv.drawRoundRect(6 * s, 10 * s, 34 * s, 28 * s, 8 * s, 8 * s, p);
+            cv.drawRoundRect(22 * s, 24 * s, 44 * s, 40 * s, 7 * s, 7 * s, p);
+            p.setStyle(Paint.Style.FILL);
+            cv.drawCircle(15 * s, 19 * s, 1.9f * s, p);
+            cv.drawCircle(22 * s, 19 * s, 1.9f * s, p);
+            cv.drawCircle(29 * s, 32 * s, 1.6f * s, p);
+            cv.drawCircle(35 * s, 32 * s, 1.6f * s, p);
         } else if (type == SOS) {
             p.setStyle(Paint.Style.STROKE);
             cv.drawRoundRect(4 * s, 8 * s, 44 * s, 40 * s, 8 * s, 8 * s, p);

@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">老友桌面</string>
+    <string name="wx_service_desc">用于在您点联系人卡片时，自动在微信里找到该联系人并发起语音或视频通话。本服务只读取微信界面上的文字来完成点击，不会收集、上传任何内容。</string>
+    <string name="wx_service_label">老友桌面微信通话</string>
 </resources>
