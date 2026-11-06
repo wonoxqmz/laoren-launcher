@@ -34,7 +34,9 @@ public class SettingsActivity extends Activity {
 
     private void build() {
         LinearLayout root = U.v(this);
-        root.setBackgroundColor(th.bg);
+        root.setBackground(new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{U.lighten(th.accent, th.dark ? 0.84f : 0.93f), th.bg}));
 
         TextView back = U.tv(this, "＜ 返回", 17, th.sub, true);
         back.setPadding(dp(10), dp(12), dp(10), dp(8));
@@ -59,7 +61,7 @@ public class SettingsActivity extends Activity {
 
     private LinearLayout card() {
         LinearLayout c = U.v(this);
-        c.setBackground(U.solid(th.card, dp(20)));
+        c.setBackground(U.stroke(th.card, dp(15), dp(1), th.cardStroke()));
         c.setPadding(dp(16), dp(4), dp(16), dp(4));
         LinearLayout.LayoutParams lp = U.lp(-1, -2, 0);
         lp.bottomMargin = dp(14);
@@ -179,17 +181,6 @@ public class SettingsActivity extends Activity {
             }
         });
         c1.addView(rFont);
-        divider(c1);
-
-        final LinearLayout rCols = row("联系人每行");
-        valueText(rCols, Prefs.cols(this) == 2 ? "2 个（大）" : "3 个（多）");
-        rCols.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                Prefs.cols(SettingsActivity.this, Prefs.cols(SettingsActivity.this) == 2 ? 3 : 2);
-                build();
-            }
-        });
-        c1.addView(rCols);
         divider(c1);
 
         final LinearLayout rRad = row("卡片圆角");

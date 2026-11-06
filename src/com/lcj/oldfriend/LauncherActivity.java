@@ -94,21 +94,40 @@ public class LauncherActivity extends Activity {
     }
 
     // ================= UI =================
+    // 视觉规格按参考版量出来的值走：
+    //   联系人卡片 140dp 高、圆角 15dp、白底 + 1dp 描边、照片铺满、名字 24sp 白字压渐变
+    //   底栏 75dp 高、圆角 15dp、34% 透明主色、大图标无文字
+    //   应用格 2 列、52dp 圆角图标 + 13sp 名字
+
+    private int dockH;
 
     private void buildUi() {
-        android.widget.FrameLayout root = new android.widget.FrameLayout(this);
-        root.setBackgroundColor(th.bg);
+        dockH = U.dp(this, 75);
+        int edge = U.dp(this, 12);
 
-        LinearLayout col = U.v(this);
-        root.addView(col, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        android.widget.FrameLayout root = new android.widget.FrameLayout(this);
+        android.graphics.drawable.GradientDrawable bg =
+                new android.graphics.drawable.GradientDrawable(
+                        android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                        new int[]{U.lighten(th.accent, th.dark ? 0.84f : 0.93f), th.bg});
+        root.setBackground(bg);
 
         flipper = new ViewFlipper(this);
         flipper.addView(buildContactPage());
         flipper.addView(buildAppPage());
-        col.addView(flipper, U.lp(-1, 0, 1f));
+        android.widget.FrameLayout.LayoutParams flp =
+                new android.widget.FrameLayout.LayoutParams(-1, -1);
+        flp.bottomMargin = dockH + edge * 2;
+        root.addView(flipper, flp);
 
         bottomBar = buildBottomBar();
-        col.addView(bottomBar, U.lp(-1, U.dp(this, 84), 0));
+        android.widget.FrameLayout.LayoutParams blp =
+                new android.widget.FrameLayout.LayoutParams(-1, dockH);
+        blp.gravity = Gravity.BOTTOM;
+        blp.leftMargin = edge;
+        blp.rightMargin = edge;
+        blp.bottomMargin = edge;
+        root.addView(bottomBar, blp);
 
         setContentView(root, new ViewGroup.LayoutParams(-1, -1));
     }
@@ -116,29 +135,30 @@ public class LauncherActivity extends Activity {
     private View buildContactPage() {
         ScrollView sc = new ScrollView(this);
         sc.setFillViewport(true);
+        sc.setOverScrollMode(View.OVER_SCROLL_NEVER);
         LinearLayout col = U.v(this);
-        col.setPadding(U.dp(this, 12), U.dp(this, 14), U.dp(this, 12), U.dp(this, 14));
+        col.setPadding(U.dp(this, 12), U.dp(this, 12), U.dp(this, 12), U.dp(this, 12));
         sc.addView(col, new ViewGroup.LayoutParams(-1, -2));
 
-        // 时间卡
+        // 大字时间卡（参考版第一屏最显眼的就是它）
         android.widget.FrameLayout timeCard = new android.widget.FrameLayout(this);
-        timeCard.setBackground(U.solid(th.card, U.dp(this, 24)));
-        timeCard.setPadding(U.dp(this, 20), U.dp(this, 16), U.dp(this, 14), U.dp(this, 12));
+        timeCard.setBackground(U.stroke(th.card, U.dp(this, 15), U.dp(this, 1), th.cardStroke()));
         TimeView tv = new TimeView(this, th);
-        timeCard.addView(tv, new android.widget.FrameLayout.LayoutParams(-1, U.dp(this, 142), Gravity.CENTER));
+        timeCard.addView(tv, new android.widget.FrameLayout.LayoutParams(-1, U.dp(this, 128)));
 
+        // 设置入口：右上角齿轮（不占底栏位置）
         IconView gear = new IconView(this, IconView.SETTINGS);
         gear.setColor(th.sub);
-        gear.setPadding(U.dp(this, 8), U.dp(this, 8), U.dp(this, 8), U.dp(this, 8));
+        gear.setPadding(U.dp(this, 9), U.dp(this, 9), U.dp(this, 9), U.dp(this, 9));
         gear.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 startActivityForResult(new Intent(LauncherActivity.this, SettingsActivity.class), REQ_SETTINGS);
             }
         });
         timeCard.addView(gear, new android.widget.FrameLayout.LayoutParams(
-                U.dp(this, 34), U.dp(this, 34), Gravity.TOP | Gravity.END));
+                U.dp(this, 36), U.dp(this, 36), Gravity.TOP | Gravity.END));
 
-        col.addView(timeCard, U.lpM(-1, -2, 0, 0, U.dp(this, 12)));
+        col.addView(timeCard, U.lpM(-1, U.dp(this, 128), 0, 0, U.dp(this, 12)));
 
         contactRows = U.v(this);
         col.addView(contactRows, U.lp(-1, -2, 0));
@@ -148,21 +168,22 @@ public class LauncherActivity extends Activity {
     private View buildAppPage() {
         ScrollView sc = new ScrollView(this);
         sc.setFillViewport(true);
+        sc.setOverScrollMode(View.OVER_SCROLL_NEVER);
         LinearLayout col = U.v(this);
-        col.setPadding(U.dp(this, 14), U.dp(this, 16), U.dp(this, 14), U.dp(this, 14));
+        col.setPadding(U.dp(this, 12), U.dp(this, 14), U.dp(this, 12), U.dp(this, 12));
 
         LinearLayout head = U.h(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        TextView title = U.tv(this, "常用应用", 24, th.text, true);
+        TextView title = U.tv(this, "常用应用", 22, th.text, true);
         head.addView(title, U.lp(0, -2, 1f));
         TextView edit = U.tv(this, "编辑", 15, th.accent, true);
-        edit.setPadding(U.dp(this, 12), U.dp(this, 6), U.dp(this, 12), U.dp(this, 6));
-        edit.setBackground(U.solid(U.lighten(th.accent, 0.85f), U.dp(this, 10)));
+        edit.setPadding(U.dp(this, 14), U.dp(this, 7), U.dp(this, 14), U.dp(this, 7));
+        edit.setBackground(U.solid(U.lighten(th.accent, 0.87f), U.dp(this, 12)));
         edit.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { pickApps(); }
         });
         head.addView(edit, U.lp(-2, -2, 0));
-        col.addView(head, U.lpM(-1, -2, 0, 0, U.dp(this, 12)));
+        col.addView(head, U.lpM(-1, -2, 0, U.dp(this, 4), U.dp(this, 12)));
 
         appRows = U.v(this);
         col.addView(appRows, U.lp(-1, -2, 0));
@@ -173,21 +194,22 @@ public class LauncherActivity extends Activity {
     private LinearLayout buildBottomBar() {
         LinearLayout bar = U.h(this);
         bar.setGravity(Gravity.CENTER);
-        bar.setBackground(U.solid(th.dark ? U.darken(th.card, 0.3f) : 0xFFFFFFFF, U.dp(this, 22)));
-        bar.setPadding(U.dp(this, 8), U.dp(this, 8), U.dp(this, 8), U.dp(this, 8));
+        bar.setBackground(U.solid(th.dock(), U.dp(this, 15)));
+        if (Build.VERSION.SDK_INT >= 21) bar.setElevation(U.dp(this, 6));
         rebuildBottomBar(bar);
         return bar;
     }
 
     private void rebuildBottomBar(LinearLayout bar) {
+        if (bar == null) return;
         bar.removeAllViews();
-        addItem(bar, IconView.CONTACTS, "联系人", new View.OnClickListener() {
+        addItem(bar, DockIcon.CONTACTS, 0, "家人", new View.OnClickListener() {
             @Override public void onClick(View v) { setPage(0); }
         });
-        addItem(bar, IconView.APPS, "应用", new View.OnClickListener() {
+        addItem(bar, DockIcon.APPS, 1, "应用", new View.OnClickListener() {
             @Override public void onClick(View v) { setPage(1); }
         });
-        addItem(bar, IconView.WECHAT, "微信", new View.OnClickListener() {
+        addItem(bar, DockIcon.WECHAT, -1, "微信", new View.OnClickListener() {
             @Override public void onClick(View v) {
                 Tts.click(LauncherActivity.this, "微信");
                 if (!WxCaller.openWeChat(LauncherActivity.this)) toast("没装微信");
@@ -195,27 +217,26 @@ public class LauncherActivity extends Activity {
         });
     }
 
-    private void addItem(LinearLayout bar, int type, String label, View.OnClickListener oc) {
-        boolean active = (type == IconView.CONTACTS && flipper != null && flipper.getDisplayedChild() == 0)
-                || (type == IconView.APPS && flipper != null && flipper.getDisplayedChild() == 1);
-        LinearLayout it = U.v(this);
-        it.setGravity(Gravity.CENTER);
+    private void addItem(LinearLayout bar, int type, int page, String label, View.OnClickListener oc) {
+        boolean active = page >= 0 && flipper != null && flipper.getDisplayedChild() == page;
+        android.widget.FrameLayout it = new android.widget.FrameLayout(this);
         it.setOnClickListener(oc);
+        it.setContentDescription(label);
 
-        IconView ic = new IconView(this, type);
-        ic.setColor(active ? th.accent : th.sub);
-        it.addView(ic, U.lp(U.dp(this, 26), U.dp(this, 26), 0));
-
-        TextView t = U.tv(this, label, 15, active ? th.accent : th.sub, true);
-        t.setGravity(Gravity.CENTER);
-        it.addView(t, U.lpM(-2, -2, 0, U.dp(this, 4), 0));
+        DockIcon ic = new DockIcon(this, type);
+        ic.setColor(th.onDock());
+        ic.setActive(active);
+        int side = U.dp(this, active ? 40 : 36);
+        android.widget.FrameLayout.LayoutParams ilp =
+                new android.widget.FrameLayout.LayoutParams(side, side, Gravity.CENTER);
+        it.addView(ic, ilp);
 
         U.tapFx(it);
         bar.addView(it, U.lp(0, -1, 1f));
     }
 
     private void setPage(int i) {
-        if (i == flipper.getDisplayedChild()) return;
+        if (flipper.getDisplayedChild() == i) return;
         flipper.setDisplayedChild(i);
         rebuildBottomBar(bottomBar);
     }
@@ -231,21 +252,23 @@ public class LauncherActivity extends Activity {
     }
 
     private void fillContacts() {
+        if (contactRows == null) return;
         contactRows.removeAllViews();
-        int cols = Prefs.cols(this);
         int n = contacts.size();
+        int gap = U.dp(this, 8);
 
         if (n == 0) {
             LinearLayout empty = U.v(this);
             empty.setGravity(Gravity.CENTER);
-            empty.setBackground(U.stroke(th.card, U.dp(this, 24), U.dp(this, 2), U.lighten(th.accent, 0.45f)));
-            empty.setPadding(U.dp(this, 16), U.dp(this, 34), U.dp(this, 16), U.dp(this, 34));
-            TextView t1 = U.tv(this, "还没有联系人", 22, th.text, true);
+            empty.setBackground(U.stroke(th.card, U.dp(this, 15), U.dp(this, 1), th.cardStroke()));
+            empty.setPadding(U.dp(this, 20), U.dp(this, 34), U.dp(this, 20), U.dp(this, 34));
+            TextView t1 = U.tv(this, "还没有家人", 24, th.text, true);
             t1.setGravity(Gravity.CENTER);
-            TextView t2 = U.tv(this, "点这里添加家人\n点一下就拨微信电话", 17, th.sub, false);
+            TextView t2 = U.tv(this, "点这里添加\n点一下就打微信视频电话", 17, th.sub, false);
             t2.setGravity(Gravity.CENTER);
+            t2.setLineSpacing(U.dp(this, 4), 1f);
             empty.addView(t1, U.lp(-2, -2, 0));
-            empty.addView(t2, U.lpM(-2, -2, 0, U.dp(this, 10), 0));
+            empty.addView(t2, U.lpM(-2, -2, 0, U.dp(this, 12), 0));
             empty.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) { editContact(null, -1); }
             });
@@ -254,36 +277,50 @@ public class LauncherActivity extends Activity {
             return;
         }
 
-        for (int rowStart = 0; rowStart < n; rowStart += cols) {
+        for (int start = 0; start < n; start += 2) {
             LinearLayout row = U.h(this);
-            for (int c = 0; c < cols; c++) {
-                int i = rowStart + c;
-                if (i < n) row.addView(contactCard(contacts.get(i), i), U.lp(0, U.dp(this, 146), 1f));
-                else row.addView(new View(this), U.lp(0, U.dp(this, 146), 1f));
+            for (int c = 0; c < 2; c++) {
+                int i = start + c;
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, U.dp(this, 140), 1f);
+                if (c == 0) lp.rightMargin = gap / 2; else lp.leftMargin = gap / 2;
+                if (i < n) row.addView(contactCard(contacts.get(i), i), lp);
+                else row.addView(new View(this), lp);
             }
-            contactRows.addView(row, U.lpM(-1, -2, 0, U.dp(this, 10), 0));
+            contactRows.addView(row, U.lpM(-1, -2, 0, gap, 0));
         }
     }
 
+    /** 联系人卡：整块照片 + 底部深色渐变 + 白色大字，和参考版一致。 */
     private View contactCard(final Contact ct, final int index) {
-        LinearLayout card = U.v(this);
-        card.setGravity(Gravity.CENTER);
-        int radius = (int) Prefs.radiusPx(this);
-        card.setBackground(U.clickBg(th.card,
-                th.dark ? U.lighten(th.card, 0.12f) : U.lighten(th.accent, 0.86f), radius));
-        card.setPadding(U.dp(this, 6), U.dp(this, 12), U.dp(this, 6), U.dp(this, 10));
+        final int r = (int) Prefs.radiusPx(this);
+        android.widget.FrameLayout card = new android.widget.FrameLayout(this);
+        card.setBackground(U.stroke(th.card, r, U.dp(this, 1), th.cardStroke()));
 
         AvatarView av = new AvatarView(this);
+        av.setRectMode(true);
+        av.setCorner(r);
         av.setContact(ct);
-        int side = U.dp(this, 88);
-        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(side, side);
-        alp.gravity = Gravity.CENTER_HORIZONTAL;
-        card.addView(av, alp);
+        card.addView(av, new android.widget.FrameLayout.LayoutParams(-1, -1));
 
-        TextView name = U.tv(this, ct.name, Prefs.nameSp(this), th.text, true);
-        name.setGravity(Gravity.CENTER);
+        // 底部渐变，保证白字压在任何照片上都看得清
+        View scrim = new View(this);
+        android.graphics.drawable.GradientDrawable g =
+                new android.graphics.drawable.GradientDrawable(
+                        android.graphics.drawable.GradientDrawable.Orientation.BOTTOM_TOP,
+                        new int[]{0xC0000000, 0x50000000, 0x00000000});
+        g.setCornerRadii(new float[]{0, 0, 0, 0, r, r, r, r});
+        scrim.setBackground(g);
+        android.widget.FrameLayout.LayoutParams slp =
+                new android.widget.FrameLayout.LayoutParams(-1, U.dp(this, 66), Gravity.BOTTOM);
+        card.addView(scrim, slp);
+
+        TextView name = U.tv(this, ct.name, Prefs.nameSp(this), 0xFFFFFFFF, true);
         name.setSingleLine(true);
-        card.addView(name, U.lpM(-1, -2, 0, U.dp(this, 8), 0));
+        name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        name.setGravity(Gravity.BOTTOM | Gravity.START);
+        name.setPadding(U.dp(this, 12), 0, U.dp(this, 10), U.dp(this, 10));
+        if (Build.VERSION.SDK_INT >= 11) name.setShadowLayer(4f, 0, 1, 0x99000000);
+        card.addView(name, new android.widget.FrameLayout.LayoutParams(-1, -1));
 
         card.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
@@ -307,41 +344,41 @@ public class LauncherActivity extends Activity {
     }
 
     private void fillApps() {
+        if (appRows == null) return;
         appRows.removeAllViews();
         List<AppRepo.App> all = AppRepo.load(this);
         List<AppRepo.App> picked = new ArrayList<AppRepo.App>();
         for (AppRepo.App a : all) if (homeApps.contains(a.pkg)) picked.add(a);
 
-        int cols = 4;
         int n = picked.size();
-        for (int rowStart = 0; rowStart < n + 1; rowStart += cols) { // 末尾多一格「添加」
+        int gap = U.dp(this, 8);
+        for (int start = 0; start < n + 1; start += 2) {
             LinearLayout row = U.h(this);
-            for (int c = 0; c < cols; c++) {
-                int i = rowStart + c;
-                if (i < n) row.addView(appItem(picked.get(i)), U.lp(0, -2, 1f));
-                else if (i == n) row.addView(addAppCell(), U.lp(0, -2, 1f));
-                else row.addView(new View(this), U.lp(0, -2, 1f));
+            for (int c = 0; c < 2; c++) {
+                int i = start + c;
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, U.dp(this, 128), 1f);
+                if (c == 0) lp.rightMargin = gap / 2; else lp.leftMargin = gap / 2;
+                if (i < n) row.addView(appItem(picked.get(i)), lp);
+                else if (i == n) row.addView(addAppCell(), lp);
+                else row.addView(new View(this), lp);
             }
-            appRows.addView(row, U.lpM(-1, -2, 0, U.dp(this, 14), 0));
+            appRows.addView(row, U.lpM(-1, -2, 0, gap, 0));
         }
     }
 
     private View addAppCell() {
         LinearLayout it = U.v(this);
         it.setGravity(Gravity.CENTER);
-        it.setPadding(U.dp(this, 4), U.dp(this, 4), U.dp(this, 4), U.dp(this, 4));
+        it.setBackground(U.clickBg(U.lighten(th.accent, 0.9f),
+                U.lighten(th.accent, 0.82f), U.dp(this, 15)));
 
-        TextView plus = U.tv(this, "＋", 30, th.accent, true);
+        TextView plus = U.tv(this, "＋", 34, th.accent, true);
         plus.setGravity(Gravity.CENTER);
-        plus.setBackground(U.stroke(U.lighten(th.accent, 0.88f), U.dp(this, 16),
-                U.dp(this, 2), U.lighten(th.accent, 0.55f)));
-        LinearLayout.LayoutParams plp = U.lp(U.dp(this, 54), U.dp(this, 54), 0);
-        plp.gravity = Gravity.CENTER_HORIZONTAL;
-        it.addView(plus, plp);
+        it.addView(plus, U.lp(-2, -2, 0));
 
-        TextView name = U.tv(this, "添加应用", Prefs.appSp(this), th.sub, false);
+        TextView name = U.tv(this, "添加应用", 15, th.accent, true);
         name.setGravity(Gravity.CENTER);
-        it.addView(name, U.lpM(-1, -2, 0, U.dp(this, 6), 0));
+        it.addView(name, U.lpM(-2, -2, 0, U.dp(this, 6), 0));
 
         it.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { pickApps(); }
@@ -353,7 +390,9 @@ public class LauncherActivity extends Activity {
     private View appItem(final AppRepo.App app) {
         LinearLayout it = U.v(this);
         it.setGravity(Gravity.CENTER);
-        it.setPadding(U.dp(this, 4), U.dp(this, 4), U.dp(this, 4), U.dp(this, 4));
+        it.setBackground(U.clickBg(th.card, U.lighten(th.accent, 0.9f), U.dp(this, 15)));
+        if (!th.dark) it.setBackground(U.stroke(th.card, U.dp(this, 15),
+                U.dp(this, 1), th.cardStroke()));
 
         ImageView iv = new ImageView(this);
         iv.setImageDrawable(app.icon);
@@ -365,7 +404,8 @@ public class LauncherActivity extends Activity {
         TextView name = U.tv(this, app.label, Prefs.appSp(this), th.text, false);
         name.setGravity(Gravity.CENTER);
         name.setSingleLine(true);
-        it.addView(name, U.lpM(-1, -2, 0, U.dp(this, 6), 0));
+        name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        it.addView(name, U.lpM(-1, -2, 0, U.dp(this, 8), 0));
 
         it.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
